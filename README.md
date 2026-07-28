@@ -8,9 +8,9 @@ Posts the day's book club reading to a Discord channel automatically, once a day
 2. **Add it as a GitHub secret**: in this repo on GitHub, go to Settings → Secrets and variables → Actions → New repository secret, name it `DISCORD_WEBHOOK_URL`, and paste the URL.
 3. Push this repo to GitHub. The `daily-post.yml` workflow will start running automatically on its hourly schedule.
 
-## Updating the reading plan / switching books
+## Starting a new book
 
-Edit `plan.yaml` and push:
+Each reading period is its own file under `books/`. To start a new book, add a new YAML file (e.g. `books/2026-09-my-new-book.yaml`) with its own dates and push — no code changes or edits to existing files needed:
 
 ```yaml
 book: "New Book Title"
@@ -19,7 +19,7 @@ schedule:
   2026-09-02: "Chapter 2"
 ```
 
-Dates with no entry are silently skipped (no message posted). No code changes are ever needed to update the plan.
+Every file in `books/` is scanned each run; the script posts whichever entry matches today's date. Dates with no entry in any file are silently skipped. If two files both have an entry for the same date (e.g. overlapping periods), the run fails loudly (visible as a red X in the Actions tab) instead of guessing which one to post — fix the overlap and it'll pick back up on the next hourly run.
 
 ## Testing locally
 

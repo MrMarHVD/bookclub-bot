@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import sys
@@ -9,12 +10,31 @@ import yaml
 
 TIMEZONE = ZoneInfo("Europe/Oslo")
 POST_HOUR = 8
-PLAN_PATH = os.path.join(os.path.dirname(__file__), "plan.yaml")
+BOOKS_DIR = os.path.join(os.path.dirname(__file__), "books")
 
 
-def load_plan():
-    with open(PLAN_PATH, "r") as f:
-        return yaml.safe_load(f)
+def load_books():
+    books = []
+    for path in sorted(glob.glob(os.path.join(BOOKS_DIR, "*.yaml"))):
+        with open(path, "r") as f:
+            books.append((path, yaml.safe_load(f)))
+    return books
+
+
+def find_todays_entry(books, today):
+    matches = []
+    for path, book in books:
+        entry = book.get("schedule", {}).get(today)
+        if entry is not None:
+            matches.append((path, book, entry))
+
+    if len(matches) > 1:
+        matching_paths = ", ".join(path for path, _, _ in matches)
+        raise RuntimeError(
+            f"Multiple book files have an entry for {today}: {matching_paths}"
+        )
+
+    return matches[0] if matches else None
 
 
 def post_to_discord(webhook_url, message):
@@ -36,15 +56,16 @@ def main():
         print(f"Not post hour (local hour {now.hour}), skipping.")
         return
 
-    plan = load_plan()
     today = now.date()
-    entry = plan.get("schedule", {}).get(today)
-    if entry is None:
+    books = load_books()
+    match = find_todays_entry(books, today)
+    if match is None:
         print(f"No reading scheduled for {today}, skipping.")
         return
 
+    _, book, entry = match
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
-    message = f"\U0001f4d6 **{plan['book']}** — today's reading: {entry}"
+    message = f"\U0001f4d6 **{book['book']}** — today's reading: {entry}"
     post_to_discord(webhook_url, message)
     print(f"Posted: {message}")
 
