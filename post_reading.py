@@ -63,9 +63,9 @@ def main():
         print(f"No reading scheduled for {today}, skipping.")
         return
 
-    _, book, entry = match
+    _, _book, entry = match
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
-    message = f"\U0001f4d6 **{book['book']}** — today's reading: {entry}"
+    message = entry
     post_to_discord(webhook_url, message)
     print(f"Posted: {message}")
 
