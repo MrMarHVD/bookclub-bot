@@ -53,7 +53,10 @@ def post_to_discord(webhook_url, message):
     request = urllib.request.Request(
         webhook_url,
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "bookclubbot (https://github.com, 1.0)",
+        },
         method="POST",
     )
     with urllib.request.urlopen(request) as response:
