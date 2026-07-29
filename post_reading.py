@@ -10,15 +10,8 @@ import yaml
 
 TIMEZONE = ZoneInfo("Europe/Oslo")
 SCHEDULE_TIME_FORMAT = "%Y-%m-%d %H:%M"
-# The workflow polls every 15 minutes, so scheduled times are matched to the
-# 15-minute window they fall in rather than the exact minute.
-WINDOW_MINUTES = 15
 BOOKS_DIR = os.path.join(os.path.dirname(__file__), "books")
-
-
-def floor_to_window(dt):
-    floored_minute = (dt.minute // WINDOW_MINUTES) * WINDOW_MINUTES
-    return dt.replace(minute=floored_minute, second=0, microsecond=0)
+STATE_PATH = os.path.join(os.path.dirname(__file__), "state", "posted.json")
 
 
 def load_books():
@@ -29,23 +22,33 @@ def load_books():
     return books
 
 
-def find_current_entry(books, window_start):
-    matches = []
+def load_state():
+    if not os.path.exists(STATE_PATH):
+        return set()
+    with open(STATE_PATH, "r") as f:
+        return set(json.load(f))
+
+
+def save_state(posted_keys):
+    os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+    with open(STATE_PATH, "w") as f:
+        json.dump(sorted(posted_keys), f, indent=2)
+        f.write("\n")
+
+
+def find_due_entries(books, now, posted_keys):
+    due = []
     for path, book in books:
         for raw_time, message in book.get("schedule", {}).items():
             entry_dt = datetime.strptime(raw_time, SCHEDULE_TIME_FORMAT).replace(
                 tzinfo=TIMEZONE
             )
-            if floor_to_window(entry_dt) == window_start:
-                matches.append((path, raw_time, message))
+            key = f"{os.path.basename(path)}::{raw_time}"
+            if entry_dt <= now and key not in posted_keys:
+                due.append((entry_dt, key, message))
 
-    if len(matches) > 1:
-        details = ", ".join(f"{path} ({raw_time})" for path, raw_time, _ in matches)
-        raise RuntimeError(
-            f"Multiple schedule entries fall in the same window: {details}"
-        )
-
-    return matches[0] if matches else None
+    due.sort(key=lambda item: item[0])
+    return due
 
 
 def post_to_discord(webhook_url, message):
@@ -66,18 +69,20 @@ def post_to_discord(webhook_url, message):
 
 def main():
     now = datetime.now(TIMEZONE)
-    window_start = floor_to_window(now)
-
     books = load_books()
-    match = find_current_entry(books, window_start)
-    if match is None:
-        print(f"No reading scheduled for window {window_start}, skipping.")
+    posted_keys = load_state()
+
+    due = find_due_entries(books, now, posted_keys)
+    if not due:
+        print("No newly due reading entries, skipping.")
         return
 
-    _, raw_time, message = match
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
-    post_to_discord(webhook_url, message)
-    print(f"Posted (scheduled for {raw_time}): {message}")
+    for entry_dt, key, message in due:
+        post_to_discord(webhook_url, message)
+        posted_keys.add(key)
+        save_state(posted_keys)
+        print(f"Posted (scheduled for {entry_dt}): {message}")
 
 
 if __name__ == "__main__":
