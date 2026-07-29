@@ -1,7 +1,7 @@
 book: "The Iliad"
 schedule:
   "2026-07-28 22:00": "This is a test of the book club github action."
-  "2026-07-29 08:00": "Today we are reading Book 7 of The Iliad by Homer."
+  "2026-07-29 19:00": "Today we are reading Book 7 of The Iliad by Homer."
   "2026-07-30 08:00": "Today we are reading Book 8 of The Iliad by Homer."
   "2026-07-31 08:00": "Today we are reading Book 9 of The Iliad by Homer."
   "2026-08-01 08:00": "Today we are reading Book 10 of The Iliad by Homer."
