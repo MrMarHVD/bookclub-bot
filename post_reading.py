@@ -39,7 +39,7 @@ def save_state(posted_keys):
 def find_due_entries(books, now, posted_keys):
     due = []
     for path, book in books:
-        for raw_time, message in book.get("schedule", {}).items():
+        for raw_time, message in (book.get("schedule") or {}).items():
             entry_dt = datetime.strptime(raw_time, SCHEDULE_TIME_FORMAT).replace(
                 tzinfo=TIMEZONE
             )
